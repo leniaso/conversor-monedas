@@ -1,7 +1,7 @@
 plugins {
     java
     id("org.springframework.boot") version "3.3.4"
-    id("io.spring.dependency-management") version "1.1.6"
+    id("io.gatling.gradle") version "3.15.1.2"
 }
 
 group = "com.conversor"
@@ -19,6 +19,8 @@ repositories {
 }
 
 dependencies {
+    implementation(platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES))
+
     // Web (REST controllers)
     implementation("org.springframework.boot:spring-boot-starter-web")
 
@@ -32,9 +34,9 @@ dependencies {
     // Validaciones
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
-    // Lombok
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
+    // Lombok 
+    compileOnly("org.projectlombok:lombok:1.18.34")
+    annotationProcessor("org.projectlombok:lombok:1.18.34")
 
     // Tests
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -42,4 +44,18 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// ------------------------------------------------------------
+// Config de Gatling. El plugin crea el source set "gatling"
+// automáticamente: src/gatling/java, src/gatling/resources.
+// ------------------------------------------------------------
+gatling {
+    includeMainOutput = false
+    includeTestOutput = false
+}
+
+// El plugin de Gatling compila su propio source set con un JVM
+tasks.withType<JavaCompile> {
+    options.release.set(21)
 }
