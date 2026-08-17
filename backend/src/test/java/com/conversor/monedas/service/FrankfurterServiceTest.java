@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -152,5 +154,44 @@ class FrankfurterServiceTest {
         assertThat(resultado.start_date).isEqualTo(start);
         assertThat(resultado.end_date).isEqualTo(end);
         assertThat(resultado.rates.get(start)).containsEntry("EUR", new BigDecimal("0.91"));
+    }
+
+    // ---------------------------------------------------------------
+    // Escenarios no felices
+    // ---------------------------------------------------------------
+
+    @Test
+    @DisplayName("getLatestRate debe propagar la excepción si Frankfurter responde con error HTTP")
+    void getLatestRate_debePropagarErrorHttp() {
+        // Arrange
+        WebClientResponseException errorSimulado = WebClientResponseException.create(
+                404, "Not Found", null, null, null);
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(FrankfurterLatestResponse.class))
+                .thenReturn(Mono.error(errorSimulado));
+
+        // Act & Assert
+        assertThatThrownBy(() -> frankfurterService.getLatestRate("USD", "XYZ"))
+                .isInstanceOf(WebClientResponseException.class);
+    }
+
+    @Test
+    @DisplayName("getLatestRate debe retornar null si Frankfurter responde sin cuerpo")
+    void getLatestRate_debeRetornarNullSiRespuestaEsVacia() {
+        // Arrange
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(FrankfurterLatestResponse.class))
+                .thenReturn(Mono.empty());
+
+        // Act
+        FrankfurterLatestResponse resultado = frankfurterService.getLatestRate("USD", "EUR");
+
+        // Assert
+        assertThat(resultado).isNull();
     }
 }
